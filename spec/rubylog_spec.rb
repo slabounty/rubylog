@@ -5,7 +5,11 @@ RSpec.describe Rubylog do
     expect(Rubylog::VERSION).not_to be nil
   end
 
-  it "does something useful" do
-    expect(false).to eq(true)
+  it "exists" do
+    expect(defined?(Rubylog)).to be_truthy
+  end
+
+  it "is defined as a module" do
+    expect(Rubylog).to be_a(Module)
   end
 end
