@@ -86,14 +86,14 @@ RSpec.describe Rubylog::Lexer do
     it "recognizes single-character operators" do
       tokens = lexer.tokenize("( ) , . ! + - <")
       expect(tokens).to eq([
-        ["(", "("],
-        [")", ")"],
-        [",", ","],
-        [".", "."],
-        ["!", "!"],
-        ["+", "+"],
-        ["-", "-"],
-        ["<", "<"]
+        [:LPAREN, "("],
+        [:RPAREN, ")"],
+        [:COMMA, ","],
+        [:DOT, "."],
+        [:"!", "!"],
+        [:+, "+"],
+        [:-, "-"],
+        [:"<", "<"]
       ])
     end
 
@@ -108,14 +108,14 @@ RSpec.describe Rubylog::Lexer do
 
       expect(tokens).to eq([
         # first clause
-        [:ATOM, "parent"], ["(", "("], [:VARIABLE, "X"], [",", ","], [:VARIABLE, "Y"], [")", ")"],
+        [:ATOM, "parent"], [:LPAREN, "("], [:VARIABLE, "X"], [:COMMA, ","], [:VARIABLE, "Y"], [:RPAREN, ")"],
         [:NECK, ":-"],
-        [:ATOM, "father"], ["(", "("], [:VARIABLE, "X"], [",", ","], [:VARIABLE, "Y"], [")", ")"],
-        [".", "."],
+        [:ATOM, "father"], [:LPAREN, "("], [:VARIABLE, "X"], [:COMMA, ","], [:VARIABLE, "Y"], [:RPAREN, ")"],
+        [:DOT, "."],
         # query
         [:QUERY, "?-"],
-        [:ATOM, "parent"], ["(", "("], [:ATOM, "john"], [",", ","], [:ATOM, "mary"], [")", ")"],
-        [".", "."]
+        [:ATOM, "parent"], [:LPAREN, "("], [:ATOM, "john"], [:COMMA, ","], [:ATOM, "mary"], [:RPAREN, ")"],
+        [:DOT, "."]
       ])
     end
   end
