@@ -5,7 +5,6 @@ module Rubylog
     KEYWORDS = []
 
     def tokenize(code)
-      puts "Lexer/tokenize code = #{code}"
       code.chomp!
       tokens = []
       i = 0
