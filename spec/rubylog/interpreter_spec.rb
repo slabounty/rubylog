@@ -54,5 +54,13 @@ RSpec.describe Rubylog::Interpreter do
         expect(result).to be true
       end
     end
+
+    context "with nested predicates" do
+      it "evaluates correctly" do
+        interpret("has(parent(alice, bob)).")
+        result = interpret("?- has(parent(X, Y)).")
+        expect(result).to include( {"X" => "alice", "Y" => "bob"})
+      end
+    end
   end
 end
