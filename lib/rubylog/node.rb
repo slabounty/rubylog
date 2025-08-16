@@ -7,7 +7,7 @@ module Rubylog
       @children = children
     end
 
-    def inspect
+    def to_s
       "#{type}(#{children.map(&:inspect).join(', ')})"
     end
   end
