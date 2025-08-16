@@ -16,7 +16,7 @@ RSpec.describe Rubylog::Node do
   end
 
   it "converts to a string" do
-    node_string = node.inspect
+    node_string = node.to_s
     expect(node_string).to include(/some_type/)
     expect(node_string).to include(/some_child/)
     expect(node_string).to include(/some_other_child/)
