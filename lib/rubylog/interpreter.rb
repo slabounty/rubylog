@@ -1,29 +1,21 @@
 # lib/rubylog/interpreter.rb
 module Rubylog
   class Interpreter
-    # Simple persistent KB so separate Interpreter instances share facts/rules across test calls
-    @@facts = []  # each fact is a Rubylog::Node(:predicate, name, args...)
-    @@rules = []  # each rule  is [head_predicate_node, body_goal_node]
-
-    def self.reset!
-      @@facts.clear
-      @@rules.clear
-    end
-
-    def initialize(ast)
-      @ast = ast
+    def initialize
+      @facts = []
+      @rules = []
     end
 
     # Evaluate a full program node.
     # Returns:
     # - true/false for ground queries
     # - Array<Hash> of substitutions for non-ground queries (variables present)
-    def evaluate
-      raise "Interpreter expects a Rubylog::Node" unless @ast.is_a?(Rubylog::Node)
-      raise "Top-level node must be :program" unless @ast.type == :program
+    def evaluate(ast)
+      raise "Interpreter expects a Rubylog::Node" unless ast.is_a?(Rubylog::Node)
+      raise "Top-level node must be :program" unless ast.type == :program
 
       result = nil
-      @ast.children.each do |clause|
+      ast.children.each do |clause|
         case clause.type
         when :fact
           predicate = clause.children.first
@@ -57,11 +49,11 @@ module Rubylog
     # --- Knowledge base ---
 
     def store_fact(pred_node)
-      @@facts << pred_node
+      @facts << pred_node
     end
 
     def store_rule(head_pred, body_goal)
-      @@rules << [head_pred, body_goal]
+      @rules << [head_pred, body_goal]
     end
 
     # --- Goal solving (DFS backtracking) ---
@@ -95,7 +87,7 @@ module Rubylog
 
     def each_matching_fact(goal_pred)
       name, arity = predicate_name(goal_pred), predicate_arity(goal_pred)
-      @@facts.each do |fact_pred|
+      @facts.each do |fact_pred|
         next unless predicate_name(fact_pred) == name
         next unless predicate_arity(fact_pred) == arity
         yield fact_pred
@@ -104,7 +96,7 @@ module Rubylog
 
     def each_matching_rule(goal_pred)
       name, arity = predicate_name(goal_pred), predicate_arity(goal_pred)
-      @@rules.each do |head_pred, body_goal|
+      @rules.each do |head_pred, body_goal|
         next unless predicate_name(head_pred) == name
         next unless predicate_arity(head_pred) == arity
         yield [head_pred, body_goal]
