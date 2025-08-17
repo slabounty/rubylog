@@ -5,10 +5,11 @@ require "rubylog/interpreter"
 
 RSpec.describe Rubylog::Interpreter do
   let(:parser) { Rubylog::Parser.new }
+  let(:interpreter) { described_class.new }
 
   def interpret(code)
     ast = parser.parse(code)
-    described_class.new(ast).evaluate
+    interpreter.evaluate(ast)
   end
 
   describe "#evaluate" do
