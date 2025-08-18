@@ -54,6 +54,15 @@ RSpec.describe Rubylog::Interpreter do
         result = interpret("?- grandparent(alice, charlie).")
         expect(result).to be true
       end
+
+      it "evaluates a rule" do
+        interpret("parent(alice, bob).")
+        interpret("parent(bob, charlie).")
+        interpret("grandparent(X, Z) :- parent(X, Y), parent(Y, Z).")
+
+        result = interpret("?- grandparent(alice, Y).")
+        expect(result).to include({ "Y" => "charlie" })
+      end
     end
 
     context "with nested predicates" do
