@@ -4,6 +4,7 @@ module Rubylog
     def initialize
       @facts = []
       @rules = []
+      @rule_counter = 0
     end
 
     # Evaluate a full program node.
@@ -18,22 +19,18 @@ module Rubylog
       ast.children.each do |clause|
         case clause.type
         when :fact
-          predicate = clause.children.first
-          store_fact(predicate)
-          # facts don't produce a result; keep last non-nil result (e.g., from a query)
+          store_fact(clause.children.first)
         when :rule
-          head = clause.children[0]
-          body = clause.children[1]
+          head, body = clause.children
           store_rule(head, body)
         when :query
           goal = clause.children.first
           solutions = solve_goals(flatten_goals(goal), {})
 
           if contains_variables?(goal)
-            # Return array of binding hashes like {"X" => "alice"}
-            result = solutions.map { |env| pretty_bindings(env) }
+            query_vars = collect_vars(goal)
+            result = solutions.map { |env| project_bindings(env, query_vars) }
           else
-            # Ground query: return boolean
             result = !solutions.empty?
           end
         else
@@ -60,9 +57,7 @@ module Rubylog
 
     # Returns array of envs (Hash<String, Rubylog::Node>) that satisfy all goals
     def solve_goals(goals, env)
-      if goals.empty?
-        return [env]
-      end
+      return [env] if goals.empty?
 
       first, *rest = goals
       solutions = []
@@ -70,16 +65,16 @@ module Rubylog
       # Try matching facts
       each_matching_fact(first) do |fact_pred|
         env2 = unify_predicates(first, fact_pred, env)
-        next unless env2
-        solutions.concat(solve_goals(rest, env2))
+        solutions.concat(solve_goals(rest, env2)) if env2
       end
 
-      # Try rules
+      # Try rules (with standardization-apart per attempt)
       each_matching_rule(first) do |head_pred, body_goal|
         env2 = unify_predicates(first, head_pred, env)
-        next unless env2
-        new_goals = flatten_goals(body_goal) + rest
-        solutions.concat(solve_goals(new_goals, env2))
+        if env2
+          new_goals = flatten_goals(body_goal) + rest
+          solutions.concat(solve_goals(new_goals, env2))
+        end
       end
 
       solutions
@@ -99,7 +94,8 @@ module Rubylog
       @rules.each do |head_pred, body_goal|
         next unless predicate_name(head_pred) == name
         next unless predicate_arity(head_pred) == arity
-        yield [head_pred, body_goal]
+        std_head, std_body = standardize_apart(head_pred, body_goal)
+        yield [std_head, std_body]
       end
     end
 
@@ -181,7 +177,6 @@ module Rubylog
     end
 
     def leaf_value(node)
-      # Leaf nodes are constructed like Node(:atom, "alice")
       node.children[0]
     end
 
@@ -206,11 +201,10 @@ module Rubylog
       term = deref(term, env)
       return true if variable?(term) && leaf_value(term) == var_name
       return false unless term.is_a?(Rubylog::Node)
-      # Check inside predicate args or leaf children
       term.children.any? { |child| occurs?(var_name, child, env) }
     end
 
-    # --- Variables detection & pretty output ---
+    # --- Variables detection & projection ---
 
     def contains_variables?(goal)
       case goal.type
@@ -229,23 +223,77 @@ module Rubylog
       t.children.any? { |c| contains_var_in_term?(c) }
     end
 
-    # Convert env bindings into {"X" => "alice"} etc.
-    # If a variable is bound to an atom/number/string, show its leaf value.
-    # If bound to a structured term, keep it as a Rubylog::Node (you can pretty-print later).
-    def pretty_bindings(env)
-      env.transform_values do |val|
-        val = deref(val, env)
-        if leaf?(val)
-          leaf_value(val)
-        elsif val.type == :predicate
-          # minimal stringification: name(args...)
-          name = val.children[0]
-          args = predicate_args(val).map { |a| leaf?(a) ? leaf_value(a) : a.inspect }
-          "#{name}(#{args.join(', ')})"
+    # Collect variable names (Strings) appearing in a goal
+    def collect_vars(node)
+      if variable?(node)
+        [leaf_value(node)]
+      elsif node.is_a?(Rubylog::Node)
+        node.children.flat_map { |c| collect_vars(c) }
+      else
+        []
+      end
+    end
+
+    # Return only the bindings for variables that appear in the query,
+    # dereferenced and pretty-printed (e.g., "likes(bob)").
+    def project_bindings(env, query_vars)
+      query_vars.uniq.each_with_object({}) do |v, h|
+        next unless env.key?(v)
+        val = deref(env[v], env)
+        h[v] = if leaf?(val)
+                 leaf_value(val)
+               elsif val.type == :predicate
+                 name = val.children[0]
+                 args = predicate_args(val).map { |a|
+                   a = deref(a, env)
+                   leaf?(a) ? leaf_value(a) : pretty_term(a, env)
+                 }
+                 "#{name}(#{args.join(', ')})"
+               else
+                 val.inspect
+               end
+      end
+    end
+
+    def pretty_term(val, env)
+      val = deref(val, env)
+      return leaf_value(val) if leaf?(val)
+      if val.type == :predicate
+        name = val.children[0]
+        args = predicate_args(val).map { |a|
+          a = deref(a, env)
+          leaf?(a) ? leaf_value(a) : pretty_term(a, env)
+        }
+        "#{name}(#{args.join(', ')})"
+      else
+        val.inspect
+      end
+    end
+
+    # --- Standardize-apart (rename rule variables per use) ---
+
+    def standardize_apart(head, body)
+      @rule_counter += 1
+      suffix = "@r#{@rule_counter}"
+      mapping = {}
+
+      rename = lambda do |node|
+        return node unless node.is_a?(Rubylog::Node) # plain String, Integer, etc.
+
+        case node.type
+        when :variable
+          name = node.children[0]
+          new_name = (mapping[name] ||= "#{name}#{suffix}")
+          Rubylog::Node.new(:variable, new_name)
+        when :predicate, :and
+          Rubylog::Node.new(node.type, *node.children.map { |c| rename.call(c) })
         else
-          val.inspect
+          # atom/number/string: keep children as-is
+          node
         end
       end
+
+      [rename.call(head), rename.call(body)]
     end
   end
 end
