@@ -10,6 +10,27 @@ RSpec.describe Rubylog::Repl do
   let(:output) { double('output').as_null_object }
   let(:prompt) { ">> " }
 
+  describe "#parser" do
+    it "creates a new parser" do
+      expect(Rubylog::Parser).to receive(:new)
+      subject.parser
+    end
+  end
+
+  describe "#interpreter" do
+    it "creates a new interpreter" do
+      expect(Rubylog::Interpreter).to receive(:new)
+      subject.interpreter
+    end
+  end
+
+  describe "#knowledge_base" do
+    it "creates a new knowledge_base" do
+      expect(Rubylog::KnowledgeBase).to receive(:new)
+      subject.knowledge_base
+    end
+  end
+
   describe "#print_prompt" do
     before do
       allow(output).to receive(:print)
