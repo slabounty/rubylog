@@ -1,5 +1,6 @@
 require_relative "parser"
 require_relative "interpreter"
+require_relative "knowledge_base"
 
 module Rubylog
   class Repl
@@ -29,7 +30,11 @@ module Rubylog
     end
 
     def interpreter
-      @interpreter ||= Rubylog::Interpreter.new
+      @interpreter ||= Rubylog::Interpreter.new(knowledge_base)
+    end
+
+    def knowledge_base
+      @knowledge_base ||= KnowledgeBase.new
     end
 
     def print_prompt

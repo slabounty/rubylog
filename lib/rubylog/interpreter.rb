@@ -1,9 +1,10 @@
 # lib/rubylog/interpreter.rb
+require_relative "knowledge_base"
+
 module Rubylog
   class Interpreter
-    def initialize
-      @facts = []
-      @rules = []
+    def initialize(kb = KnowledgeBase.new)
+      @knowledge_base = kb
       @rule_counter = 0
     end
 
@@ -46,11 +47,11 @@ module Rubylog
     # --- Knowledge base ---
 
     def store_fact(pred_node)
-      @facts << pred_node
+      @knowledge_base.add_fact(pred_node)
     end
 
     def store_rule(head_pred, body_goal)
-      @rules << [head_pred, body_goal]
+      @knowledge_base.add_rule([head_pred, body_goal])
     end
 
     # --- Goal solving (DFS backtracking) ---
@@ -82,7 +83,7 @@ module Rubylog
 
     def each_matching_fact(goal_pred)
       name, arity = predicate_name(goal_pred), predicate_arity(goal_pred)
-      @facts.each do |fact_pred|
+      @knowledge_base.each_fact do |fact_pred|
         next unless predicate_name(fact_pred) == name
         next unless predicate_arity(fact_pred) == arity
         yield fact_pred
@@ -91,7 +92,7 @@ module Rubylog
 
     def each_matching_rule(goal_pred)
       name, arity = predicate_name(goal_pred), predicate_arity(goal_pred)
-      @rules.each do |head_pred, body_goal|
+      @knowledge_base.each_rule do |head_pred, body_goal|
         next unless predicate_name(head_pred) == name
         next unless predicate_arity(head_pred) == arity
         std_head, std_body = standardize_apart(head_pred, body_goal)
