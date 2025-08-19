@@ -1,4 +1,3 @@
-require_relative "parser"
 require_relative "interpreter"
 require_relative "knowledge_base"
 
@@ -16,17 +15,12 @@ module Rubylog
         print_prompt
         code = @input.gets.strip
         break if code == "halt."   # classic Prolog quit
-        ast = parser.parse(code)   # parse to clause AST
-        result = interpreter.evaluate(ast)
+        result = interpreter.evaluate_code(code)
         @output.puts result
       rescue => e
         @output.puts "Error: #{e}"
         @output.puts e.backtrace
       end
-    end
-
-    def parser
-      @parser ||= Rubylog::Parser.new
     end
 
     def interpreter

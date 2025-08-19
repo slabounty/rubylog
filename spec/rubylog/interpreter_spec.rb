@@ -1,15 +1,14 @@
 # spec/rubylog/interpreter_spec.rb
 require "spec_helper"
-require "rubylog/parser"
+require "rubylog/knowledge_base"
 require "rubylog/interpreter"
 
 RSpec.describe Rubylog::Interpreter do
-  let(:parser) { Rubylog::Parser.new }
-  let(:interpreter) { described_class.new }
+  let(:knowledge_base) { Rubylog::KnowledgeBase.new }
+  let(:interpreter) { described_class.new(knowledge_base) }
 
   def interpret(code)
-    ast = parser.parse(code)
-    interpreter.evaluate(ast)
+    interpreter.evaluate_code(code)
   end
 
   describe "#evaluate" do

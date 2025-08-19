@@ -1,11 +1,18 @@
 # lib/rubylog/interpreter.rb
 require_relative "knowledge_base"
+require_relative "parser"
 
 module Rubylog
   class Interpreter
-    def initialize(kb = KnowledgeBase.new)
-      @knowledge_base = kb
+    def initialize(knowledge_base)
+      @knowledge_base = knowledge_base
+      @parser = Rubylog::Parser.new
       @rule_counter = 0
+    end
+
+    def evaluate_code(code)
+      ast = @parser.parse(code)
+      evaluate(ast)
     end
 
     # Evaluate a full program node.
