@@ -51,6 +51,32 @@ module Rubylog
 
     private
 
+    def handle_builtin(goal, env, rest)
+      return nil unless goal.type == :predicate
+
+      case predicate_name(goal)
+      when "consult"
+        arg = predicate_args(goal).first
+        filename = leaf_value(deref(arg, env))
+        begin
+          source = File.read(filename)
+          interpreter = Rubylog::Interpreter.new(@knowledge_base)
+          interpreter.evaluate_code(source)
+          return [env]
+        rescue Errno::ENOENT
+          # File not found → Prolog semantics = fail
+          return []     # failure
+        rescue => e
+          # Other unexpected errors → maybe log, but still fail
+          warn "consult/1 error: #{e.message}"
+          return []
+        end
+
+      else
+        nil
+      end
+    end
+
     # --- Knowledge base ---
 
     def store_fact(pred_node)
@@ -69,6 +95,11 @@ module Rubylog
 
       first, *rest = goals
       solutions = []
+
+      # --- Builtins ---
+      if builtin_solution = handle_builtin(first, env, rest)
+        solutions.concat(builtin_solution)
+      end
 
       # Try matching facts
       each_matching_fact(first) do |fact_pred|
