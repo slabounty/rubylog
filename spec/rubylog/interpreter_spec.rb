@@ -72,4 +72,33 @@ RSpec.describe Rubylog::Interpreter do
       end
     end
   end
+
+  describe "consult/1" do
+    let(:tmpfile) { "spec/tmp_test.pl" }
+
+    before do
+      File.write(tmpfile, <<~PROLOG)
+        parent(john, mary).
+        parent(mary, alice).
+      PROLOG
+    end
+
+    after do
+      File.delete(tmpfile) if File.exist?(tmpfile)
+    end
+
+    it "loads facts from a file and succeeds" do
+      results = interpreter.evaluate_code("?- consult(\"#{tmpfile}\").")
+      expect(results).to eq(true) # consult succeeded
+
+      # facts should be available after consult
+      results = interpreter.evaluate_code("?- parent(john, X).")
+      expect(results).not_to be_empty
+    end
+
+    it "fails gracefully if the file does not exist" do
+      results = interpreter.evaluate_code("?- consult(\"does_not_exist.pl\").")
+      expect(results).to eq(false) # consult fails = false
+    end
+  end
 end
